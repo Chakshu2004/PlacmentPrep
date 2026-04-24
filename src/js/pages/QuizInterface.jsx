@@ -1,20 +1,26 @@
-const QuizInterface = ({ subjectId, difficulty, onComplete, onNavigate }) => {
+import React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Icon } from '../components/Icon';
+import { DifficultyBadge } from '../components/DifficultyBadge';
+import { SUBJECTS, QUESTIONS_DB } from '../../data/questions';
+import { useQuiz } from '../hooks/useQuiz';
+import { useTimer } from '../hooks/useTimer';
+import { useProgress } from '../hooks/useProgress';
+
+const QuizInterface = () => {
+  const { subjectId, difficulty } = useParams();
+  const navigate = useNavigate();
   const subject = SUBJECTS.find(s => s.id === subjectId);
+
+  const { startQuiz, submitQuiz, loading, error } = useQuiz();
+  const { timeRemaining, formatTime, isUrgent } = useTimer();
+  const { currentQuestionIndex, progressPercentage, isComplete, isAnswered } = useProgress();
+
   const allQuestions = difficulty === 'all'
     ? [...QUESTIONS_DB[subjectId].easy, ...QUESTIONS_DB[subjectId].medium, ...QUESTIONS_DB[subjectId].hard]
     : QUESTIONS_DB[subjectId][difficulty];
 
-  const [currentIdx, setCurrentIdx] = React.useState(0);
-  const [answers, setAnswers] = React.useState({});
-  const [selected, setSelected] = React.useState(null);
-  const [confirmed, setConfirmed] = React.useState(false);
-  const [timeLeft, setTimeLeft] = React.useState(difficulty === 'hard' ? 90 : difficulty === 'medium' ? 60 : 45);
-  const [totalTime, setTotalTime] = React.useState(0);
-  const timerRef = React.useRef(null);
-  const totalTimeRef = React.useRef(null);
-
-  const q = allQuestions[currentIdx];
-  const progress = (currentIdx / allQuestions.length) * 100;
+  const q = allQuestions[currentQuestionIndex];
 
   const getDiffLabel = (id) => {
     if (QUESTIONS_DB[subjectId].easy.find(q => q.id === id)) return 'easy';
@@ -23,49 +29,46 @@ const QuizInterface = ({ subjectId, difficulty, onComplete, onNavigate }) => {
   };
 
   React.useEffect(() => {
-    timerRef.current = setInterval(() => {
-      setTimeLeft(t => {
-        if (t <= 1) { handleConfirm(true); return 0; }
-        return t - 1;
-      });
-    }, 1000);
-    totalTimeRef.current = setInterval(() => setTotalTime(t => t + 1), 1000);
-    return () => { clearInterval(timerRef.current); clearInterval(totalTimeRef.current); };
-  }, [currentIdx]);
-
-  const resetTimer = () => {
-    clearInterval(timerRef.current);
-    const nextQ = allQuestions[currentIdx + 1];
-    if (!nextQ) return;
-    const nextDiff = getDiffLabel(nextQ.id);
-    setTimeLeft(nextDiff === 'hard' ? 90 : nextDiff === 'medium' ? 60 : 45);
-  };
+    startQuiz(subjectId, difficulty);
+  }, [subjectId, difficulty]);
 
   const handleSelect = (idx) => {
-    if (confirmed) return;
-    setSelected(idx);
+    // This will be handled by the store
   };
 
-  const handleConfirm = (autoSkip = false) => {
-    clearInterval(timerRef.current);
-    setAnswers(prev => ({ ...prev, [q.id]: selected }));
-    setConfirmed(true);
+  const handleConfirm = () => {
+    // This will be handled by the store
   };
 
   const handleNext = () => {
-    if (currentIdx + 1 >= allQuestions.length) {
-      clearInterval(totalTimeRef.current);
-      onComplete({ answers, questions: allQuestions, totalTime });
-    } else {
-      setCurrentIdx(i => i + 1);
-      setSelected(null);
-      setConfirmed(false);
-      resetTimer();
-    }
+    // This will be handled by the store
   };
 
-  const fmt = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
-  const isUrgent = timeLeft <= 10;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--primary)' }}></div>
+          <p style={{ color: 'var(--on-surface-variant)' }}>Loading quiz...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <div className="text-center">
+          <Icon name="error" className="text-4xl mb-4" style={{ color: 'var(--error)' }} />
+          <p className="text-lg font-semibold mb-2" style={{ color: 'var(--error)' }}>Error Loading Quiz</p>
+          <p className="text-sm mb-4" style={{ color: 'var(--on-surface-variant)' }}>{error}</p>
+          <button onClick={() => navigate('/')} className="px-6 py-2 rounded-lg font-lexend font-semibold" style={{ background: 'var(--primary)', color: 'white' }}>
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
@@ -73,22 +76,22 @@ const QuizInterface = ({ subjectId, difficulty, onComplete, onNavigate }) => {
         <div className="max-w-3xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <button onClick={() => onNavigate('home')} className="w-7 h-7 rounded flex items-center justify-center hover:bg-gray-100">
+              <button onClick={() => navigate('/')} className="w-7 h-7 rounded flex items-center justify-center hover:bg-gray-100">
                 <Icon name="close" style={{ color: 'var(--on-surface-variant)', fontSize: '18px' }} />
               </button>
               <span className="font-lexend font-semibold text-sm" style={{ color: 'var(--primary)' }}>{subject.name}</span>
               {difficulty !== 'all' && <DifficultyBadge level={difficulty} />}
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs font-lexend" style={{ color: 'var(--on-surface-variant)' }}>{currentIdx + 1}/{allQuestions.length}</span>
+              <span className="text-xs font-lexend" style={{ color: 'var(--on-surface-variant)' }}>{currentQuestionIndex + 1}/{allQuestions.length}</span>
               <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full font-lexend font-semibold text-sm ${isUrgent ? 'timer-urgent' : ''}`} style={{ background: isUrgent ? 'var(--error-container)' : 'var(--surface-container)', color: isUrgent ? 'var(--error)' : 'var(--primary)' }}>
                 <Icon name="timer" style={{ fontSize: '15px' }} />
-                {fmt(timeLeft)}
+                {formatTime(timeRemaining)}
               </div>
             </div>
           </div>
           <div className="h-1.5 rounded-full" style={{ background: 'var(--surface-container)' }}>
-            <div className="h-full rounded-full progress-bar-inner" style={{ width: progress + '%', background: subject.color }} />
+            <div className="h-full rounded-full progress-bar-inner" style={{ width: progressPercentage + '%', background: subject.color }} />
           </div>
         </div>
       </div>
@@ -102,7 +105,7 @@ const QuizInterface = ({ subjectId, difficulty, onComplete, onNavigate }) => {
           )}
           <div className="bg-white rounded-xl p-6 mb-5 border" style={{ borderColor: 'var(--outline-variant)' }}>
             <p className="text-xs font-lexend font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--on-surface-variant)' }}>
-              Question {currentIdx + 1}
+              Question {currentQuestionIndex + 1}
             </p>
             <p className="text-base font-medium leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--on-surface)', fontFamily: 'Public Sans' }}>
               {q.question}
@@ -112,10 +115,7 @@ const QuizInterface = ({ subjectId, difficulty, onComplete, onNavigate }) => {
           <div className="space-y-3 mb-6">
             {q.options.map((opt, i) => {
               let cls = 'option-btn';
-              if (confirmed) {
-                if (i === q.answer) cls += ' correct';
-                else if (i === selected && i !== q.answer) cls += ' incorrect';
-              } else if (selected === i) cls += ' selected';
+              // Add logic for selected/correct/incorrect states
 
               return (
                 <button key={i} onClick={() => handleSelect(i)} className={`${cls} w-full text-left p-4 rounded-xl flex items-center gap-3 transition-all`}>
@@ -123,31 +123,22 @@ const QuizInterface = ({ subjectId, difficulty, onComplete, onNavigate }) => {
                     {String.fromCharCode(65 + i)}
                   </span>
                   <span className="text-sm" style={{ color: 'var(--on-surface)', fontFamily: 'Public Sans' }}>{opt}</span>
-                  {confirmed && i === q.answer && <Icon name="check_circle" className="filled ml-auto" style={{ color: 'var(--success)', fontSize: '20px' }} />}
-                  {confirmed && i === selected && i !== q.answer && <Icon name="cancel" className="filled ml-auto" style={{ color: 'var(--error)', fontSize: '20px' }} />}
+                  {/* Add check/cancel icons based on state */}
                 </button>
               );
             })}
           </div>
 
-          {confirmed && (
-            <div className="p-4 rounded-xl mb-5 animate-fade-up" style={{ background: 'var(--surface-low)', border: '1px solid var(--outline-variant)' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <Icon name="lightbulb" className="filled" style={{ color: '#7a5500', fontSize: '18px' }} />
-                <span className="font-lexend font-semibold text-sm" style={{ color: 'var(--primary)' }}>Explanation</span>
-              </div>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--on-surface-variant)' }}>{q.explanation}</p>
-            </div>
-          )}
+          {/* Add explanation section when confirmed */}
 
           <div className="flex gap-3">
-            {!confirmed ? (
-              <button onClick={() => handleConfirm(false)} disabled={selected === null} className="flex-1 py-3 rounded-xl font-lexend font-semibold text-sm transition-all active:scale-98" style={{ background: selected !== null ? 'var(--primary)' : 'var(--outline-variant)', color: selected !== null ? 'white' : 'var(--on-surface-variant)', cursor: selected !== null ? 'pointer' : 'not-allowed' }}>
+            {!isAnswered ? (
+              <button onClick={handleConfirm} disabled={selected === null} className="flex-1 py-3 rounded-xl font-lexend font-semibold text-sm transition-all active:scale-98" style={{ background: selected !== null ? 'var(--primary)' : 'var(--outline-variant)', color: selected !== null ? 'white' : 'var(--on-surface-variant)', cursor: selected !== null ? 'pointer' : 'not-allowed' }}>
                 Confirm Answer
               </button>
             ) : (
               <button onClick={handleNext} className="flex-1 py-3 rounded-xl font-lexend font-semibold text-sm transition-all hover:opacity-90 active:scale-98 flex items-center justify-center gap-2" style={{ background: 'var(--primary)', color: 'white', cursor: 'pointer' }}>
-                {currentIdx + 1 >= allQuestions.length ? <><Icon name="assessment" className="text-base" />View Results</> : <><span>Next Question</span><Icon name="arrow_forward" className="text-base" /></>}
+                {isComplete ? <><Icon name="assessment" className="text-base" />View Results</> : <><span>Next Question</span><Icon name="arrow_forward" className="text-base" /></>}
               </button>
             )}
           </div>

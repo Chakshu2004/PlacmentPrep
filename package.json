@@ -1,0 +1,12 @@
+{
+  "name": "placement-prep",
+  "version": "1.0.0",
+  "description": "Placement preparation app with React",
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.0",
+    "zustand": "^4.3.0",
+    "recharts": "^2.5.0"
+  }
+}

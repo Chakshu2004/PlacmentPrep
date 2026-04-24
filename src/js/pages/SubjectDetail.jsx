@@ -1,4 +1,11 @@
-const SubjectDetail = ({ subjectId, onNavigate, onStartQuiz }) => {
+import React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Icon } from '../components/Icon';
+import { SUBJECTS } from '../../data/questions';
+
+const SubjectDetail = () => {
+  const { subjectId } = useParams();
+  const navigate = useNavigate();
   const subject = SUBJECTS.find(s => s.id === subjectId);
   const [selectedDifficulty, setSelectedDifficulty] = React.useState(null);
 
@@ -12,7 +19,7 @@ const SubjectDetail = ({ subjectId, onNavigate, onStartQuiz }) => {
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <div className="sticky top-0 z-30 bg-white border-b" style={{ borderColor: 'var(--outline-variant)' }}>
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          <button onClick={() => onNavigate('home')} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
+          <button onClick={() => navigate('/')} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors">
             <Icon name="arrow_back" style={{ color: 'var(--primary)' }} />
           </button>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: subject.color }}>
@@ -75,13 +82,13 @@ const SubjectDetail = ({ subjectId, onNavigate, onStartQuiz }) => {
                 <p className="text-xs" style={{ color: 'var(--on-surface-variant)' }}>All 15 questions — Easy, Medium & Hard</p>
               </div>
             </div>
-            <button onClick={() => onStartQuiz(subjectId, 'all')} className="px-4 py-2 rounded-lg text-xs font-lexend font-semibold transition-all hover:opacity-90 active:scale-95" style={{ background: 'var(--primary)', color: 'white' }}>
+            <button onClick={() => navigate(`/quiz/${subjectId}/all`)} className="px-4 py-2 rounded-lg text-xs font-lexend font-semibold transition-all hover:opacity-90 active:scale-95" style={{ background: 'var(--primary)', color: 'white' }}>
               Start All
             </button>
           </div>
         </div>
 
-        <button disabled={!selectedDifficulty} onClick={() => selectedDifficulty && onStartQuiz(subjectId, selectedDifficulty)} className="w-full py-3.5 rounded-xl font-lexend font-semibold text-base transition-all active:scale-98" style={{ background: selectedDifficulty ? 'var(--primary)' : 'var(--outline-variant)', color: selectedDifficulty ? 'white' : 'var(--on-surface-variant)', cursor: selectedDifficulty ? 'pointer' : 'not-allowed' }}>
+        <button disabled={!selectedDifficulty} onClick={() => selectedDifficulty && navigate(`/quiz/${subjectId}/${selectedDifficulty}`)} className="w-full py-3.5 rounded-xl font-lexend font-semibold text-base transition-all active:scale-98" style={{ background: selectedDifficulty ? 'var(--primary)' : 'var(--outline-variant)', color: selectedDifficulty ? 'white' : 'var(--on-surface-variant)', cursor: selectedDifficulty ? 'pointer' : 'not-allowed' }}>
           {selectedDifficulty ? `Start ${selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)} Practice` : 'Select a Difficulty to Continue'}
         </button>
       </div>
